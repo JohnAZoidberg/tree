@@ -21,7 +21,7 @@
 .SH NAME
 tree \- list contents of directories in a tree-like format.
 .SH SYNOPSIS
-\fBtree\fP [\fB-acdfghilnpqrstuvxACDFQNSUX\fP] [\fB-L\fP \fIlevel\fP [\fB-R\fP]] [\fB-H\fP \fIbaseHREF\fP] [\fB-T\fP \fItitle\fP] [\fB-o\fP \fIfilename\fP] [\fB--nolinks\fP] [\fB-P\fP \fIpattern\fP] [\fB-I\fP \fIpattern\fP] [\fB--inodes\fP] [\fB--device\fP] [\fB--noreport\fP] [\fB--dirsfirst\fP] [\fB--version\fP] [\fB--help\fP] [\fB--filelimit\fP \fI#\fP] [\fB--si\fP] [\fB--prune\fP] [\fB--du\fP] [\fB--timefmt\fP \fIformat\fP] [\fB--matchdirs\fP] [\fB--fromfile\fP] [\fB--\fP] [\fIdirectory\fP ...]
+\fBtree\fP [\fB-acdfghilnpqrstuvxACDFQNSUX\fP] [\fB-L\fP \fIlevel\fP [\fB-R\fP]] [\fB-H\fP \fIbaseHREF\fP] [\fB-T\fP \fItitle\fP] [\fB-o\fP \fIfilename\fP] [\fB--nolinks\fP] [\fB-P\fP \fIpattern\fP] [\fB-I\fP \fIpattern\fP] [\fB--inodes\fP] [\fB--device\fP] [\fB--noreport\fP] [\fB--dirsfirst\fP] [\fB--version\fP] [\fB--help\fP] [\fB--filelimit\fP \fI#\fP] [\fB--si\fP] [\fB--prune\fP] [\fB--prune-leaves\fP] [\fB--du\fP] [\fB--timefmt\fP \fIformat\fP] [\fB--matchdirs\fP] [\fB--fromfile\fP] [\fB--\fP] [\fIdirectory\fP ...]
 
 .br
 .SH DESCRIPTION
@@ -109,14 +109,20 @@ cause the pattern to match without regards to the case of each letter.
 If a match pattern is specified by the \fB-P\fP option, this will cause the
 pattern to be applied to directory names (in addition to filenames).  In the
 event of a match on the directory name, matching is disabled for the directory's
-contents. If the \fB--prune\fP option is used, empty folders that match the
-pattern will not be pruned.
+contents. If the \fB--prune\fP or \fB--prune-leaves\fP option is used, empty
+folders that match the pattern will not be pruned.
 .PP
 .TP
 .B --prune
 Makes tree prune empty directories from the output, useful when used in
 conjunction with \fB-P\fP or \fB-I\fP.  See \fBBUGS AND NOTES\fP below for
 more information on this option. 
+.PP
+.TP
+.B --prune-leaves
+Makes tree prune directories from the output that don't have any
+subdirectories. That's useful in conjunction with \fB-d\fP to get an overview
+of a large directory tree without the clutter of the lowest directories.
 .PP
 .TP
 .B --noreport
@@ -367,9 +373,9 @@ implementations which rounds up always.
 Pruning files and directories with the -I, -P and --filelimit options will
 lead to incorrect file/directory count reports.
 
-The --prune and --du options cause tree to accumulate the entire tree in memory
-before emitting it. For large directory trees this can cause a significant delay
-in output and the use of large amounts of memory.
+The --prune, --prune-leaves and --du options cause tree to accumulate the
+entire tree in memory before emitting it. For large directory trees this can
+cause a significant delay in output and the use of large amounts of memory.
 
 The timefmt expansion buffer is limited to a ridiculously large 255 characters.
 Output of time strings longer than this will be undefined, but are guaranteed

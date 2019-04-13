@@ -28,7 +28,7 @@ static char *hversion="\t\t tree v1.8.0 %s 1996 - 2018 by Steve Baker and Thomas
 /* Globals */
 bool dflag, lflag, pflag, sflag, Fflag, aflag, fflag, uflag, gflag;
 bool qflag, Nflag, Qflag, Dflag, inodeflag, devflag, hflag, Rflag;
-bool Hflag, siflag, cflag, Xflag, Jflag, duflag, pruneflag;
+bool Hflag, siflag, cflag, Xflag, Jflag, duflag, pruneflag, pruneleavesflag;
 bool noindent, force_color, nocolor, xdev, noreport, nolinks, flimit, dirsfirst;
 bool ignorecase, matchdirs, fromfile;
 bool reverse;
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
   Dflag = qflag = Nflag = Qflag = Rflag = hflag = Hflag = siflag = cflag = FALSE;
   noindent = force_color = nocolor = xdev = noreport = nolinks = reverse = FALSE;
   ignorecase = matchdirs = dirsfirst = inodeflag = devflag = Xflag = Jflag = FALSE;
-  duflag = pruneflag = FALSE;
+  duflag = pruneflag = pruneleavesflag = FALSE;
   flimit = 0;
   dirs = xmalloc(sizeof(int) * (maxdirs=4096));
   memset(dirs, 0, sizeof(int) * maxdirs);
@@ -361,6 +361,11 @@ int main(int argc, char **argv)
 	      duflag = TRUE;
 	      break;
 	    }
+	    if (!strncmp("--prune-leaves",argv[i],14)) {
+	      j = strlen(argv[i])-1;
+	      pruneleavesflag = TRUE;
+	      break;
+	    }
 	    if (!strncmp("--prune",argv[i],7)) {
 	      j = strlen(argv[i])-1;
 	      pruneflag = TRUE;
@@ -478,7 +483,7 @@ int main(int argc, char **argv)
   parse_dir_colors();
   initlinedraw(0);
 
-  needfulltree = duflag || pruneflag || matchdirs || fromfile;
+  needfulltree = duflag || pruneflag || matchdirs || fromfile || pruneleavesflag;
 
   if (fromfile) {
     getfulltree = file_getfulltree;
@@ -632,8 +637,8 @@ void usage(int n)
 	"\t[-L level [-R]] [-P pattern] [-I pattern] [-o filename] [--version]\n"
 	"\t[--help] [--inodes] [--device] [--noreport] [--nolinks] [--dirsfirst]\n"
 	"\t[--charset charset] [--filelimit[=]#] [--si] [--timefmt[=]<f>]\n"
-	"\t[--sort[=]<name>] [--matchdirs] [--ignore-case] [--fromfile] [--]\n"
-	"\t[<directory list>]\n");
+	"\t[--sort[=]<name>] [--matchdirs] [--ignore-case] [--fromfile] [--prune]\n"
+	"\t[--prune-leaves] [--] [<directory list>]\n");
   if (n < 2) return;
   fprintf(stdout,
 	"  ------- Listing options -------\n"
@@ -653,6 +658,8 @@ void usage(int n)
 	"  --filelimit # Do not descend dirs with more than # files in them.\n"
 	"  --timefmt <f> Print and format time according to the format <f>.\n"
 	"  -o filename   Output to file instead of stdout.\n"
+	"  --prune       Do not list empty directories.\n"
+	"  --prune-leavesDo not list directories that don't include subdirectories.\n"
 	"  ------- File options -------\n"
 	"  -q            Print non-printable characters as '?'.\n"
 	"  -N            Print non-printable characters as is.\n"
@@ -811,7 +818,7 @@ struct _info **unix_getfulltree(char *d, u_long lev, dev_t dev, off_t *size, cha
 {
   char *path;
   long pathsize = 0;
-  struct _info **dir, **sav, **p, *sp;
+  struct _info **dir, **sav;
   struct stat sb;
   int n;
   u_long lev_tmp;
@@ -894,17 +901,6 @@ struct _info **unix_getfulltree(char *d, u_long lev, dev_t dev, off_t *size, cha
 	saveino((*dir)->inode, (*dir)->dev);
 	(*dir)->child = unix_getfulltree(path,lev+1,dev,&((*dir)->size),&((*dir)->err));
       }
-      // prune empty folders, unless they match the requested pattern
-      if (pruneflag && (*dir)->child == NULL &&
-	  !(matchdirs && pattern && patmatch((*dir)->name,pattern) == 1)) {
-	sp = *dir;
-	for(p=dir;*p;p++) *p = *(p+1);
-	n--;
-	free(sp->name);
-	if (sp->lnk) free(sp->lnk);
-	free(sp);
-	continue;
-      }
     }
     if (duflag) *size += (*dir)->size;
     dir++;
@@ -915,6 +911,41 @@ struct _info **unix_getfulltree(char *d, u_long lev, dev_t dev, off_t *size, cha
     return NULL;
   }
   return sav;
+}
+
+struct _info **prune_tree(struct _info **dir) {
+  if (!dir) return NULL;
+
+  struct _info **orig_tree = dir;
+  while (*dir) {
+    if ((*dir)->isdir) {
+      // Either prune empty folders or folder which don't include subdirectories,
+      // unless they match the requested pattern
+      if (((pruneflag && (*dir)->child == NULL) ||
+	   (pruneleavesflag && !has_subdirs(*dir))) &&
+	  !(matchdirs && pattern && patmatch((*dir)->name,pattern) == 1)) {
+	struct _info *sp = *dir;
+	for(struct _info **p=dir; *p; p++) *p = *(p+1);
+	free(sp->name);
+	if (sp->lnk) free(sp->lnk);
+	free(sp);
+	continue;
+      }
+
+      (*dir)->child = prune_tree((*dir)->child);
+    }
+    dir++;
+  }
+  return orig_tree;
+}
+
+bool has_subdirs(struct _info *dir) {
+  for (struct _info **child = dir->child; child && *child; child++) {
+    if ((*child)->isdir) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 /* Sorting functions */

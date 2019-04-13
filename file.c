@@ -18,7 +18,7 @@
  */
 #include "tree.h"
 
-extern bool dflag, Fflag, aflag, fflag, pruneflag;
+extern bool dflag, Fflag, aflag, fflag, pruneflag, pruneleavesflag;
 extern bool noindent, force_color, flimit, matchdirs;
 extern bool reverse;
 extern char *pattern, *ipattern;
@@ -129,6 +129,7 @@ struct _info **fprune(struct _info *head, bool matched, bool root)
       }
     }
     if (pruneflag && !matched && ent->isdir && ent->tchild == NULL) show = 0;
+    if (pruneleavesflag && !matched && ent->isdir && !has_subdirs(ent)) show = 0;
     if (show && ent->tchild != NULL) ent->child = fprune(ent->tchild, matched, FALSE);
 
     t = ent;
@@ -272,7 +273,7 @@ struct _info **file_getfulltree(char *d, u_long lev, dev_t dev, off_t *size, cha
 //     fprintf(stderr,"Error opening %s for reading.\n", d);
 //     return;
 //   }
-//   root = getfulltree(fp, lev);
+//   root = prune_tree(getfulltree(fp, lev));
 //   if (d != NULL) fclose(fp);
 // 
 //   memset(dirs, 0, sizeof(int) * maxdirs);

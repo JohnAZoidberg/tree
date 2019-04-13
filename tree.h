@@ -187,6 +187,8 @@ void saveino(ino_t, dev_t);
 
 /* file.c */
 struct _info **file_getfulltree(char *d, u_long lev, dev_t dev, off_t *size, char **err);
+struct _info **prune_tree(struct _info **dir);
+bool has_subdirs(struct _info *dir);
 
 /* We use the strverscmp.c file if we're not linux */
 #if ! defined (LINUX)

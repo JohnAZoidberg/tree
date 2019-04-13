@@ -183,7 +183,7 @@ off_t json_rlistdir(char *d, int *dt, int *ft, u_long lev, dev_t dev)
   off_t size = 0;
   char *err;
 
-  dir = getfulltree(d, lev, dev, &size, &err);
+  dir = prune_tree(getfulltree(d, lev, dev, &size, &err));
 
   memset(dirs, 0, sizeof(int) * maxdirs);
 
